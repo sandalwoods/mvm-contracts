@@ -5,7 +5,6 @@ import '@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol';
 import './interfaces/IUniswapV2Router02.sol';
 import './interfaces/IERC20.sol';
 import './libraries/UniswapV2Library.sol';
-
 contract UniswapMVMRouter {
     address immutable router;
     uint256 constant AGE = 300;
@@ -21,7 +20,7 @@ contract UniswapMVMRouter {
         router = _router;
     }
 
-    function addLiquidity(address asset, uint256 amount) public {        
+    function addLiquidity(address asset, uint256 amount) public {
         IERC20(asset).transferFrom(msg.sender, address(this), amount);
 
         Operation memory op = operations[msg.sender];
@@ -56,11 +55,33 @@ contract UniswapMVMRouter {
 
         if (op.amount > amountA) {
             IERC20(op.asset).transfer(msg.sender, op.amount - amountA);
+            IERC20(op.asset).approve(router, 0);
         }
         if (amount > amountB) {
             IERC20(asset).transfer(msg.sender, amount - amountB);
+            IERC20(asset).approve(router, 0);
         }
         operations[msg.sender].asset = address(0);
+    }
+
+
+    function removeLiquidity(
+        address pair,
+        address tokenA,
+        address tokenB,
+        address to,
+        uint256 liquidity,
+        uint256 amountAMin,
+        uint256 amountBMin
+    ) public {
+        pair.call(abi.encodeWithSignature("approve(address,uint256)",router, liquidity));
+        IUniswapV2Router02(router).removeLiquidity(
+            tokenA, tokenB,
+            liquidity,
+            amountAMin, amountBMin,
+            to,
+            block.timestamp + AGE
+        );
     }
 
     function claim() public {
